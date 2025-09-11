@@ -1,0 +1,84 @@
+.loginContainer {
+  max-width: 400px;
+  margin: auto;
+  padding: 32px 18px 18px 18px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(30, 50, 80, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.logoBlock {
+  margin-bottom: 18px;
+  text-align: center;
+}
+.logo {
+  width: 60px;
+  margin-bottom: 7px;
+}
+.title {
+  text-align: center;
+  margin-bottom: 14px;
+  color: #176ab9;
+  font-size: 1.4rem;
+}
+.form label {
+  display: block;
+  margin-top: 7px;
+  margin-bottom: 2px;
+  color: #323232;
+}
+.form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #b7d8f6;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 7px;
+}
+.forgot {
+  text-align: right;
+  font-size: 0.93rem;
+  margin-bottom: 10px;
+}
+.forgot a {
+  color: #176ab9;
+  text-decoration: none;
+}
+.loginBtn {
+  width: 100%;
+  background: #176ab9;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 0;
+  margin: 10px 0 15px 0;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.or {
+  color: #323232;
+  margin-bottom: 10px;
+}
+.bottom {
+  margin-top: 7px;
+  text-align: center;
+  color: #323232;
+  font-size: 1rem;
+}
+.signupLink {
+  color: #176ab9;
+  cursor: pointer;
+  font-weight: 500;
+  margin-left: 3px;
+}
+@media (max-width: 500px) {
+  .loginContainer {
+    padding: 18px 6px;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+  }
+}

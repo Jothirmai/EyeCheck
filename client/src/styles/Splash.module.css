@@ -1,0 +1,25 @@
+.container {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+}
+.logoBlock {
+  text-align: center;
+}
+.logo {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 20px;
+}
+.brand {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #192944;
+  margin-bottom: 9px;
+}
+.tagline {
+  font-size: 1rem;
+  color: #323232;
+}
