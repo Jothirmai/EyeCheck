@@ -3,156 +3,128 @@ import Webcam from "react-webcam";
 import "../styles/Camera.css";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
-// import Navbar from "./Navbar"; // Import the Navbar component
 
 const EyeCaptureInterface = () => {
+  const [leftEyeFile, setLeftEyeFile] = useState(null);
+  const [rightEyeFile, setRightEyeFile] = useState(null);
+
   const [leftEyeCaptured, setLeftEyeCaptured] = useState(false);
   const [rightEyeCaptured, setRightEyeCaptured] = useState(false);
+
   const [showWebcam, setShowWebcam] = useState(false);
-  const [capturingFor, setCapturingFor] = useState(null); // "left" or "right"
-  const [medicalHistory, setMedicalHistory] = useState({
-    condition: "",
-    medications: "",
-    allergies: "",
-    previousSurgery: "",
-  });
+  const [capturingFor, setCapturingFor] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [predictionResult, setPredictionResult] = useState(null);
 
   const webcamRef = useRef(null);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  // ✅ Capture + Upload API integration
-  const capture = useCallback(async () => {
+  // Capture from webcam
+  const capture = useCallback(() => {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) return;
-
-      // Convert base64 → Blob
-      const byteString = atob(imageSrc.split(",")[1]);
-      const mimeString = imageSrc.split(",")[0].split(":")[1].split(";")[0];
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-      }
-      const blob = new Blob([ab], { type: mimeString });
-
-      // Prepare FormData
-      const formData = new FormData();
-      formData.append("image", blob, `${capturingFor}_eye.jpg`);
-      formData.append("eye", capturingFor);
-
-      try {
-        const res = await fetch("http://localhost:3001/api/upload", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // ✅ ensure token stored on login
-          },
-          body: formData,
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          alert(`Error: ${data.error || "Upload failed"}`);
-          return;
-        }
-
-        console.log("API Response:", data);
-
-        if (capturingFor === "left") {
-          setLeftEyeCaptured(true);
-        } else {
-          setRightEyeCaptured(true);
-        }
-
-        alert("Image uploaded & processed successfully!");
-      } catch (err) {
-        console.error("Upload error:", err);
-        alert("Failed to upload image");
-      }
-
-      // Close webcam modal
-      setShowWebcam(false);
-      setCapturingFor(null);
+      const blob = dataURLtoBlob(imageSrc);
+      handleImageSelected(blob, capturingFor);
     }
   }, [capturingFor]);
 
-  const navigatteToMedicalHistory = () => {
-    navigate("/history");
+  // Convert base64 to Blob
+  const dataURLtoBlob = (dataURL) => {
+    const byteString = atob(dataURL.split(",")[1]);
+    const mimeString = dataURL.split(",")[0].split(":")[1].split(";")[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
   };
 
-  const handleCapture = (eye) => {
-    setCapturingFor(eye);
-    setShowWebcam(true);
+  // Handle file upload
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) handleImageSelected(file, capturingFor);
   };
 
-  const handleCancelCapture = () => {
+  // Save captured/uploaded image
+  const handleImageSelected = (file, eye) => {
+    if (eye === "left") {
+      setLeftEyeFile(file);
+      setLeftEyeCaptured(true);
+    } else {
+      setRightEyeFile(file);
+      setRightEyeCaptured(true);
+    }
     setShowWebcam(false);
     setCapturingFor(null);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setMedicalHistory((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
-
-  // ✅ Submit full medical history + eye status
+  // Submit images for prediction
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!leftEyeFile || !rightEyeFile) {
+      alert("Please capture or upload both eyes before submitting!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("left_eye", leftEyeFile);
+    formData.append("right_eye", rightEyeFile);
+
     try {
-      const res = await fetch("/api/submit-history", {
+      setLoading(true);
+      setPredictionResult(null);
+
+      // Debug: log the FormData entries
+      console.log([...formData.entries()]);
+
+      const res = await fetch("http://localhost:3001/api/predict", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({
-          ...medicalHistory,
-          leftEyeCaptured,
-          rightEyeCaptured,
-        }),
+        body: formData,
       });
 
       const data = await res.json();
+      setLoading(false);
 
       if (!res.ok) {
-        alert(`Error: ${data.error || "Submission failed"}`);
+        alert(`Prediction failed: ${data.error || "Unknown error"}`);
         return;
       }
 
-      alert("Form submitted successfully!");
-      console.log("Submission Response:", data);
+      setPredictionResult([
+        { eye: "Left Eye", prediction: data.left_eye },
+        { eye: "Right Eye", prediction: data.right_eye },
+      ]);
     } catch (err) {
-      console.error("Submit error:", err);
-      alert("Failed to submit form");
+      setLoading(false);
+      console.error("Prediction error:", err);
+      alert("Failed to run prediction");
     }
   };
 
-  const videoConstraints = {
-    width: 1280,
-    height: 720,
-    facingMode: "user",
-  };
+  const navigateToMedicalHistory = () => navigate("/history");
+  const handleCapture = (eye) => { setCapturingFor(eye); setShowWebcam(true); };
+  const handleCancelCapture = () => { setShowWebcam(false); setCapturingFor(null); };
+
+  const videoConstraints = { width: 1280, height: 720, facingMode: "user" };
 
   return (
     <div className="app-container">
-      {/* Add Navbar at the top */}
       <Navbar />
-      
       <div className="main-content">
         <div className="eye-capture-container">
           {showWebcam && (
             <div className="webcam-overlay">
               <div className="webcam-modal">
                 <h2>Capture {capturingFor === "left" ? "Left" : "Right"} Eye</h2>
-                <p>
-                  Position your {capturingFor === "left" ? "left" : "right"} eye in
-                  the center of the frame
-                </p>
+                <p>You can either capture with webcam or upload from device</p>
 
                 <div className="webcam-wrapper">
                   <Webcam
@@ -165,84 +137,59 @@ const EyeCaptureInterface = () => {
                 </div>
 
                 <div className="webcam-controls">
-                  <button onClick={capture} className="capture-webcam-btn">
-                    Capture Image
-                  </button>
-                  <button onClick={handleCancelCapture} className="cancel-btn">
-                    Cancel
-                  </button>
+                  <button onClick={capture} className="capture-webcam-btn">Capture with Webcam</button>
+                  <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }} onChange={handleFileUpload} />
+                  <button onClick={() => fileInputRef.current.click()} className="upload-btn">Upload Image</button>
+                  <button onClick={handleCancelCapture} className="cancel-btn">Cancel</button>
                 </div>
               </div>
             </div>
           )}
 
           <div className="eye-capture-card">
-            <div className="header">
-              <h1>Capture The Eyes</h1>
-            </div>
-
+            <div className="header"><h1>Capture The Eyes</h1></div>
             <div className="eyes-section">
               <div className="eyes-container">
-                <div className="eye-box left-eye">
-                  <h3>Left Eye</h3>
-                  <div className="eye-preview">
-                    {leftEyeCaptured ? (
-                      <div className="capture-success">
-                        <div className="success-icon">✓</div>
-                        <p>Captured Successfully!</p>
+                {["left", "right"].map((eye) => {
+                  const captured = eye === "left" ? leftEyeCaptured : rightEyeCaptured;
+                  return (
+                    <div key={eye} className={`eye-box ${eye}-eye`}>
+                      <h3>{eye === "left" ? "Left Eye" : "Right Eye"}</h3>
+                      <div className="eye-preview">
+                        {captured ? (
+                          <div className="capture-success"><div className="success-icon">✓</div><p>Captured Successfully!</p></div>
+                        ) : (
+                          <div className="eye-placeholder"><div className="camera-icon">📷</div><p>Click capture to open options</p></div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="eye-placeholder">
-                        <div className="camera-icon">📷</div>
-                        <p>Click capture to open camera</p>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    className={`capture-btn ${leftEyeCaptured ? "captured" : ""}`}
-                    onClick={() => handleCapture("left")}
-                  >
-                    {leftEyeCaptured ? "Recapture" : "Capture"}
-                  </button>
-                </div>
-
-                <div className="eye-box right-eye">
-                  <h3>Right Eye</h3>
-                  <div className="eye-preview">
-                    {rightEyeCaptured ? (
-                      <div className="capture-success">
-                        <div className="success-icon">✓</div>
-                        <p>Captured Successfully!</p>
-                      </div>
-                    ) : (
-                      <div className="eye-placeholder">
-                        <div className="camera-icon">📷</div>
-                        <p>Click capture to open camera</p>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    className={`capture-btn ${rightEyeCaptured ? "captured" : ""}`}
-                    onClick={() => handleCapture("right")}
-                  >
-                    {rightEyeCaptured ? "Recapture" : "Capture"}
-                  </button>
-                </div>
+                      <button className={`capture-btn ${captured ? "captured" : ""}`} onClick={() => handleCapture(eye)}>
+                        {captured ? "Recapture / Upload" : "Capture / Upload"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             <div className="medical-history-section">
-              <button
-                type="button"
-                onClick={navigatteToMedicalHistory}
-                className="submit-btn"
-              >
-                Medical History
-              </button>
-              <button type="submit" onClick={handleSubmit} className="submit-btn">
-                Submit
-              </button>
+              <button type="button" onClick={navigateToMedicalHistory} className="submit-btn">Medical History</button>
+              <button type="submit" onClick={handleSubmit} className="submit-btn" disabled={loading}>{loading ? "Predicting..." : "Submit & Predict"}</button>
             </div>
+
+            {loading && <div className="spinner"></div>}
+
+            {predictionResult && (
+              <div className="prediction-result">
+                <h2>Prediction Results:</h2>
+                <ul>
+                  {predictionResult.map((res, idx) => (
+                    <li key={idx} style={{ color: res.prediction === "Normal" ? "green" : "red", fontWeight: "bold" }}>
+                      {res.eye}: {res.prediction}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -31,8 +31,6 @@ const MedicalHistoryPage = () => {
         return '#27ae60';
       case 'cataract':
         return '#e67e22';
-      case 'severe':
-        return '#e74c3c';
       default:
         return '#7f8c8d';
     }

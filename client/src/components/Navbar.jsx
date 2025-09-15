@@ -27,7 +27,7 @@ const Navbar = () => {
         <div className="navbar-brand" onClick={handleLogoClick}>
           <div className="logo">
             <span className="logo-icon">👁️</span>
-            <span className="logo-text">Catract</span>
+            <span className="logo-text">Cataract</span>
           </div>
         </div>
         
