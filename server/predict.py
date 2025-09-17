@@ -49,7 +49,7 @@ def predict_eye(img_path):
         pred = model.predict(img_array)
         log(f"Raw prediction for {img_path}: {pred}")
         # Binary classification threshold
-        return "Cataract" if pred[0][0] >= 0.5 else "Normal"
+        return "Normal" if pred[0][0] >= 0.5 else "Cataract"
     except Exception as e:
         log(f"ERROR predicting image {img_path}: {str(e)}")
         return f"Error: {str(e)}"
